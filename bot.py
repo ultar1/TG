@@ -11,10 +11,14 @@ dispatcher = Dispatcher(bot, None, use_context=True)
 
 # Define the start command handler
 def start(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text('Hello! I am your bot.')
+    update.message.reply_text('Hello! I am your friendly Telegram bot. How can I assist you today?')
 
 # Register the /start command handler
 dispatcher.add_handler(CommandHandler("start", start))
+
+@app.route('/')
+def index() -> str:
+    return 'Hello, this is the Telegram bot webhook server.'
 
 @app.route('/webhook', methods=['POST'])
 def webhook() -> str:
