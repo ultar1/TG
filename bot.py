@@ -27,7 +27,7 @@ dispatcher = Dispatcher(bot, None, use_context=True)
 
 # Define the start command handler
 def start(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text('Hello! I am your friendly Telegram bot. How can I assist you today?')
+    menu(update, context)
 
 # Define the help command handler
 def help_command(update: Update, context: CallbackContext) -> None:
@@ -37,7 +37,8 @@ def help_command(update: Update, context: CallbackContext) -> None:
         '/help - Show this help message\n'
         '/about - About this bot\n'
         '/contact - Contact information\n'
-        '/menu - Show the main menu'
+        '/menu - Show the main menu\n'
+        '/withdraw - Withdraw funds'
     )
 
 # Define the about command handler
@@ -51,13 +52,21 @@ def contact(update: Update, context: CallbackContext) -> None:
 # Define the menu command handler
 def menu(update: Update, context: CallbackContext) -> None:
     keyboard = [
-        [InlineKeyboardButton("Join the main group", url="https://chat.whatsapp.com/J6FWyxJTPiQ21fbU29zg7L")],
+        [InlineKeyboardButton("Task", callback_data='task')],
         [InlineKeyboardButton("Generate your referral link", callback_data='generate_referral_link')],
         [InlineKeyboardButton("Check your balance", callback_data='check_balance')],
         [InlineKeyboardButton("Withdraw", callback_data='withdraw')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.message.reply_text('Main Menu:', reply_markup=reply_markup)
+
+# Define the task command handler
+def task(update: Update, context: CallbackContext) -> None:
+    keyboard = [
+        [InlineKeyboardButton("Join the main group", url="https://chat.whatsapp.com/J6FWyxJTPiQ21fbU29zg7L")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    update.callback_query.message.reply_text('Join:', reply_markup=reply_markup)
 
 # Define the generate referral link command handler
 def generate_referral_link(update: Update, context: CallbackContext) -> None:
@@ -107,7 +116,9 @@ def handle_withdraw(update: Update, context: CallbackContext) -> None:
 def button(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
     query.answer()
-    if query.data == 'generate_referral_link':
+    if query.data == 'task':
+        task(update, context)
+    elif query.data == 'generate_referral_link':
         generate_referral_link(query, context)
     elif query.data == 'check_balance':
         check_balance(query, context)
@@ -148,6 +159,7 @@ dispatcher.add_handler(CommandHandler("help", help_command))
 dispatcher.add_handler(CommandHandler("about", about))
 dispatcher.add_handler(CommandHandler("contact", contact))
 dispatcher.add_handler(CommandHandler("menu", menu))
+dispatcher.add_handler(CommandHandler("withdraw", withdraw))
 dispatcher.add_handler(CallbackQueryHandler(button))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_withdraw))
 
