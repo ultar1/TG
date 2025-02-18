@@ -1,6 +1,6 @@
 import os
 from flask import Flask, request
-from telegram import Update, Bot
+from telegram import Update, Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Dispatcher, CommandHandler, CallbackContext
 from collections import defaultdict
 
@@ -39,13 +39,14 @@ def contact(update: Update, context: CallbackContext) -> None:
 
 # Define the menu command handler
 def menu(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text(
-        'Main Menu:\n'
-        '1. Join the main group: https://chat.whatsapp.com/J6FWyxJTPiQ21fbU29zg7L\n'
-        '2. Referral program\n'
-        '3. Generate your referral link\n'
-        '4. Check your balance'
-    )
+    keyboard = [
+        [InlineKeyboardButton("Join the main group", url="https://chat.whatsapp.com/J6FWyxJTPiQ21fbU29zg7L")],
+        [InlineKeyboardButton("Referral program", callback_data='referral_program')],
+        [InlineKeyboardButton("Generate your referral link", callback_data='generate_referral_link')],
+        [InlineKeyboardButton("Check your balance", callback_data='check_balance')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    update.message.reply_text('Main Menu:', reply_markup=reply_markup)
 
 # Define the referral program command handler
 def referral_program(update: Update, context: CallbackContext) -> None:
@@ -57,7 +58,7 @@ def referral_program(update: Update, context: CallbackContext) -> None:
 # Define the generate referral link command handler
 def generate_referral_link(update: Update, context: CallbackContext) -> None:
     user_id = update.message.from_user.id
-    referral_link = f'https://your-app.onrender.com/referral/{user_id}'
+    referral_link = f'https://t.me/mazi?start={user_id}'
     update.message.reply_text(f'Your referral link: {referral_link}')
 
 # Define the check balance command handler
