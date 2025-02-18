@@ -1,4 +1,5 @@
 import os
+import random
 from flask import Flask, request
 from telegram import Update, Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Dispatcher, CommandHandler, CallbackContext, CallbackQueryHandler, MessageHandler, Filters
@@ -25,9 +26,29 @@ db.create_all()
 bot = Bot(token=os.getenv('TELEGRAM_BOT_TOKEN'))
 dispatcher = Dispatcher(bot, None, use_context=True)
 
-# Define the start command handler
+# Define the start command handler with captcha
 def start(update: Update, context: CallbackContext) -> None:
-    menu(update, context)
+    user_id = update.message.from_user.id
+    num1 = random.randint(1, 10)
+    num2 = random.randint(1, 10)
+    context.user_data['captcha_answer'] = num1 + num2
+    update.message.reply_text(f'Welcome! Please solve this math problem to proceed: {num1} + {num2} = ?')
+
+# Define the captcha handler
+def handle_captcha(update: Update, context: CallbackContext) -> None:
+    user_id = update.message.from_user.id
+    answer = context.user_data.get('captcha_answer')
+    try:
+        user_answer = int(update.message.text)
+        if user_answer == answer:
+            menu(update, context)
+        else:
+            num1 = random.randint(1, 10)
+            num2 = random.randint(1, 10)
+            context.user_data['captcha_answer'] = num1 + num2
+            update.message.reply_text(f'Incorrect. Please try again: {num1} + {num2} = ?')
+    except ValueError:
+        update.message.reply_text('Please enter a valid number.')
 
 # Define the help command handler
 def help_command(update: Update, context: CallbackContext) -> None:
@@ -53,7 +74,7 @@ def contact(update: Update, context: CallbackContext) -> None:
 def menu(update: Update, context: CallbackContext) -> None:
     keyboard = [
         [InlineKeyboardButton("Task", callback_data='task')],
-        [InlineKeyboardButton("Generate your referral link", callback_data='generate_referral_link')],
+        [InlineKeyboardButton("Referral link", callback_data='generate_referral_link')],
         [InlineKeyboardButton("Check your balance", callback_data='check_balance')],
         [InlineKeyboardButton("Withdraw", callback_data='withdraw')]
     ]
@@ -161,6 +182,7 @@ dispatcher.add_handler(CommandHandler("contact", contact))
 dispatcher.add_handler(CommandHandler("menu", menu))
 dispatcher.add_handler(CommandHandler("withdraw", withdraw))
 dispatcher.add_handler(CallbackQueryHandler(button))
+dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_captcha))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_withdraw))
 
 @app.route('/')
