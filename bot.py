@@ -1,7 +1,7 @@
 import os
 from flask import Flask, request
 from telegram import Update, Bot, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Dispatcher, CommandHandler, CallbackContext
+from telegram.ext import Dispatcher, CommandHandler, CallbackContext, CallbackQueryHandler
 from collections import defaultdict
 
 app = Flask(__name__)
@@ -67,6 +67,17 @@ def check_balance(update: Update, context: CallbackContext) -> None:
     balance = user_balances[user_id]
     update.message.reply_text(f'Your balance: {balance} NGN')
 
+# Define the callback query handler
+def button(update: Update, context: CallbackContext) -> None:
+    query = update.callback_query
+    query.answer()
+    if query.data == 'referral_program':
+        referral_program(update, context)
+    elif query.data == 'generate_referral_link':
+        generate_referral_link(update, context)
+    elif query.data == 'check_balance':
+        check_balance(update, context)
+
 # Define the referral endpoint
 @app.route('/referral/<int:user_id>', methods=['GET'])
 def referral(user_id: int) -> str:
@@ -79,9 +90,7 @@ dispatcher.add_handler(CommandHandler("help", help_command))
 dispatcher.add_handler(CommandHandler("about", about))
 dispatcher.add_handler(CommandHandler("contact", contact))
 dispatcher.add_handler(CommandHandler("menu", menu))
-dispatcher.add_handler(CommandHandler("referral_program", referral_program))
-dispatcher.add_handler(CommandHandler("generate_referral_link", generate_referral_link))
-dispatcher.add_handler(CommandHandler("check_balance", check_balance))
+dispatcher.add_handler(CallbackQueryHandler(button))
 
 @app.route('/')
 def index() -> str:
