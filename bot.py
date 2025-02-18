@@ -3,8 +3,22 @@ from flask import Flask, request
 from telegram import Update, Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Dispatcher, CommandHandler, CallbackContext, CallbackQueryHandler
 from collections import defaultdict
+from flask_sqlalchemy import SQLAlchemy
 
+# Initialize Flask app and SQLAlchemy
 app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+
+# Define the User model
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    telegram_id = db.Column(db.String(50), unique=True, nullable=False)
+    balance = db.Column(db.Integer, default=0)
+
+# Initialize the database
+db.create_all()
 
 # Initialize the bot and dispatcher
 bot = Bot(token=os.getenv('TELEGRAM_BOT_TOKEN'))
@@ -50,13 +64,14 @@ def menu(update: Update, context: CallbackContext) -> None:
 # Define the generate referral link command handler
 def generate_referral_link(update: Update, context: CallbackContext) -> None:
     user_id = update.message.from_user.id
-    referral_link = f'https://t.me/mazi?start={user_id}'
+    referral_link = f'https://your-app.onrender.com/referral/{user_id}/{user_id}'
     update.message.reply_text(f'Your referral link: {referral_link}')
 
 # Define the check balance command handler
 def check_balance(update: Update, context: CallbackContext) -> None:
     user_id = update.message.from_user.id
-    balance = user_balances[user_id]
+    user = User.query.filter_by(telegram_id=str(user_id)).first()
+    balance = user.balance if user else 0
     update.message.reply_text(f'Your balance: {balance} NGN')
 
 # Define the callback query handler
@@ -69,9 +84,24 @@ def button(update: Update, context: CallbackContext) -> None:
         check_balance(query, context)
 
 # Define the referral endpoint
-@app.route('/referral/<int:user_id>', methods=['GET'])
-def referral(user_id: int) -> str:
-    user_balances[user_id] += 100
+@app.route('/referral/<int:inviter_id>/<int:new_user_id>', methods=['GET'])
+def referral(inviter_id: int, new_user_id: int) -> str:
+    inviter = User.query.filter_by(telegram_id=str(inviter_id)).first()
+    new_user = User.query.filter_by(telegram_id=str(new_user_id)).first()
+
+    if not inviter:
+        inviter = User(telegram_id=str(inviter_id), balance=100)
+        db.session.add(inviter)
+    else:
+        inviter.balance += 100
+
+    if not new_user:
+        new_user = User(telegram_id=str(new_user_id), balance=100)
+        db.session.add(new_user)
+    else:
+        new_user.balance += 100
+
+    db.session.commit()
     return 'Referral successful!'
 
 # Register the command handlers
