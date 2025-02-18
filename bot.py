@@ -41,19 +41,11 @@ def contact(update: Update, context: CallbackContext) -> None:
 def menu(update: Update, context: CallbackContext) -> None:
     keyboard = [
         [InlineKeyboardButton("Join the main group", url="https://chat.whatsapp.com/J6FWyxJTPiQ21fbU29zg7L")],
-        [InlineKeyboardButton("Referral program", callback_data='referral_program')],
         [InlineKeyboardButton("Generate your referral link", callback_data='generate_referral_link')],
         [InlineKeyboardButton("Check your balance", callback_data='check_balance')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.message.reply_text('Main Menu:', reply_markup=reply_markup)
-
-# Define the referral program command handler
-def referral_program(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text(
-        'Referral Program:\n'
-        'Whenever you use your referral link to invite someone, you will earn 100 NGN for each successful invite.'
-    )
 
 # Define the generate referral link command handler
 def generate_referral_link(update: Update, context: CallbackContext) -> None:
@@ -71,12 +63,10 @@ def check_balance(update: Update, context: CallbackContext) -> None:
 def button(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
     query.answer()
-    if query.data == 'referral_program':
-        referral_program(update, context)
-    elif query.data == 'generate_referral_link':
-        generate_referral_link(update, context)
+    if query.data == 'generate_referral_link':
+        generate_referral_link(query, context)
     elif query.data == 'check_balance':
-        check_balance(update, context)
+        check_balance(query, context)
 
 # Define the referral endpoint
 @app.route('/referral/<int:user_id>', methods=['GET'])
