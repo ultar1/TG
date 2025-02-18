@@ -102,6 +102,13 @@ def referral(inviter_id: int, new_user_id: int) -> str:
         new_user.balance += 100
 
     db.session.commit()
+
+    # Notify the inviter
+    bot.send_message(chat_id=inviter_id, text=f"Someone used your referral link! Your new balance is {inviter.balance} NGN.")
+
+    # Notify the new user
+    bot.send_message(chat_id=new_user_id, text=f"Welcome! You have received 100 NGN for joining. Your balance is {new_user.balance} NGN.")
+
     return 'Referral successful!'
 
 # Register the command handlers
