@@ -1,15 +1,21 @@
 import os
 import random
+import time
 from flask import Flask, request
 from telegram import Update, Bot, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Dispatcher, CommandHandler, CallbackContext, CallbackQueryHandler, MessageHandler, Filters
 from flask_sqlalchemy import SQLAlchemy
+from pytube import YouTube
+import openai
 
 # Initialize Flask app and SQLAlchemy
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
+
+# Initialize OpenAI API
+openai.api_key = os.getenv('OPENAI_API_KEY')
 
 # Define the User model
 class User(db.Model):
@@ -66,6 +72,8 @@ def verify_group_membership(update: Update, context: CallbackContext) -> None:
     is_member = check_whatsapp_group_membership(user_id)
     if is_member:
         context.user_data['awaiting_group_join'] = False
+        update.message.reply_text('You have successfully joined the group. Please wait...')
+        time.sleep(5)
         show_main_menu(update, context)
     else:
         update.message.reply_text('You must join the group to proceed.')
@@ -81,7 +89,8 @@ def show_main_menu(update: Update, context: CallbackContext) -> None:
     keyboard = [
         [InlineKeyboardButton("Referral link", callback_data='generate_referral_link')],
         [InlineKeyboardButton("Check your balance", callback_data='check_balance')],
-        [InlineKeyboardButton("Withdraw", callback_data='withdraw')]
+        [InlineKeyboardButton("Withdraw", callback_data='withdraw')],
+        [InlineKeyboardButton("Download YouTube Video", callback_data='download_video')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.message.reply_text('Main Menu:', reply_markup=reply_markup)
@@ -90,7 +99,8 @@ def show_main_menu(update: Update, context: CallbackContext) -> None:
     keyboard_buttons = [
         [KeyboardButton("/generate_referral_link")],
         [KeyboardButton("/check_balance")],
-        [KeyboardButton("/withdraw")]
+        [KeyboardButton("/withdraw")],
+        [KeyboardButton("/download_video")]
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard_buttons, one_time_keyboard=True)
     update.message.reply_text('Use the commands below:', reply_markup=reply_markup)
@@ -104,7 +114,8 @@ def help_command(update: Update, context: CallbackContext) -> None:
         '/about - About this bot\n'
         '/contact - Contact information\n'
         '/menu - Show the main menu\n'
-        '/withdraw - Withdraw funds'
+        '/withdraw - Withdraw funds\n'
+        '/download - Download YouTube video'
     )
 
 # Define the about command handler
@@ -121,7 +132,8 @@ def menu(update: Update, context: CallbackContext) -> None:
         [InlineKeyboardButton("Task", callback_data='task')],
         [InlineKeyboardButton("Referral link", callback_data='generate_referral_link')],
         [InlineKeyboardButton("Check your balance", callback_data='check_balance')],
-        [InlineKeyboardButton("Withdraw", callback_data='withdraw')]
+        [InlineKeyboardButton("Withdraw", callback_data='withdraw')],
+        [InlineKeyboardButton("Download YouTube Video", callback_data='download_video')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.message.reply_text('Main Menu:', reply_markup=reply_markup)
@@ -131,7 +143,8 @@ def menu(update: Update, context: CallbackContext) -> None:
         [KeyboardButton("/task")],
         [KeyboardButton("/generate_referral_link")],
         [KeyboardButton("/check_balance")],
-        [KeyboardButton("/withdraw")]
+        [KeyboardButton("/withdraw")],
+        [KeyboardButton("/download_video")]
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard_buttons, one_time_keyboard=True)
     update.message.reply_text('Use the commands below:', reply_markup=reply_markup)
@@ -194,6 +207,39 @@ def handle_withdraw(update: Update, context: CallbackContext) -> None:
         except ValueError:
             update.message.reply_text('Please enter a valid amount.')
 
+# Define the download video command handler
+def download_video(update: Update, context: CallbackContext) -> None:
+    update.message.reply_text('Please send the YouTube URL of the video you want to download.')
+
+# Define the message handler for downloading YouTube videos
+def handle_download(update: Update, context: CallbackContext) -> None:
+    url = update.message.text
+    try:
+        yt = YouTube(url)
+        stream = yt.streams.get_highest_resolution()
+        stream.download(output_path='downloads/', filename=f'{yt.title}.mp4')
+        update.message.reply_text(f'Success! The video "{yt.title}" has been downloaded.')
+    except Exception as e:
+        update.message.reply_text(f'Error: {str(e)}')
+
+# Define the ask command handler for GPT-4
+def ask(update: Update, context: CallbackContext) -> None:
+    update.message.reply_text('Please ask your question.')
+
+# Define the message handler for GPT-4
+def handle_ask(update: Update, context: CallbackContext) -> None:
+    question = update.message.text
+    try:
+        response = openai.Completion.create(
+            engine="text-davinci-004",
+            prompt=question,
+            max_tokens=150
+        )
+        answer = response.choices[0].text.strip()
+        update.message.reply_text(answer)
+    except Exception as e:
+        update.message.reply_text(f'Error: {str(e)}')
+
 # Define the callback query handler
 def button(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
@@ -206,6 +252,8 @@ def button(update: Update, context: CallbackContext) -> None:
         check_balance(query, context)
     elif query.data == 'withdraw':
         withdraw(query, context)
+    elif query.data == 'download_video':
+        download_video(query, context)
 
 # Define the referral endpoint
 @app.route('/referral/<int:inviter_id>/<int:new_user_id>', methods=['GET'])
@@ -242,9 +290,13 @@ dispatcher.add_handler(CommandHandler("about", about))
 dispatcher.add_handler(CommandHandler("contact", contact))
 dispatcher.add_handler(CommandHandler("menu", menu))
 dispatcher.add_handler(CommandHandler("withdraw", withdraw))
+dispatcher.add_handler(CommandHandler("download", download_video))
+dispatcher.add_handler(CommandHandler("ask", ask))
 dispatcher.add_handler(CallbackQueryHandler(button))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_captcha))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_withdraw))
+dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_download))
+dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_ask))
 dispatcher.add_handler(MessageHandler(Filters.status_update.new_chat_members, verify_group_membership))
 
 @app.route('/')
