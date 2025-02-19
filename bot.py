@@ -1,7 +1,7 @@
 import os
 import random
 from flask import Flask, request
-from telegram import Update, Bot, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, Bot, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Dispatcher, CommandHandler, CallbackContext, CallbackQueryHandler, MessageHandler, Filters
 from flask_sqlalchemy import SQLAlchemy
 
@@ -41,7 +41,7 @@ def handle_captcha(update: Update, context: CallbackContext) -> None:
     try:
         user_answer = int(update.message.text)
         if user_answer == answer:
-            menu(update, context)
+            prompt_join_group(update, context)
         else:
             num1 = random.randint(1, 10)
             num2 = random.randint(1, 10)
@@ -49,6 +49,25 @@ def handle_captcha(update: Update, context: CallbackContext) -> None:
             update.message.reply_text(f'Incorrect. Please try again: {num1} + {num2} = ?')
     except ValueError:
         update.message.reply_text('Please enter a valid number.')
+
+# Prompt the user to join the group
+def prompt_join_group(update: Update, context: CallbackContext) -> None:
+    keyboard = [
+        [InlineKeyboardButton("Join the main group", url="https://chat.whatsapp.com/J6FWyxJTPiQ21fbU29zg7L")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    update.message.reply_text('Please join the main group to proceed:', reply_markup=reply_markup)
+    context.user_data['awaiting_group_join'] = True
+
+# Verify if the user has joined the group
+def verify_group_membership(update: Update, context: CallbackContext) -> None:
+    user_id = update.message.from_user.id
+    chat_member = bot.get_chat_member(chat_id='@your_group_chat_id', user_id=user_id)
+    if chat_member.status in ['member', 'administrator', 'creator']:
+        context.user_data['awaiting_group_join'] = False
+        menu(update, context)
+    else:
+        update.message.reply_text('You must join the group to proceed.')
 
 # Define the help command handler
 def help_command(update: Update, context: CallbackContext) -> None:
@@ -81,6 +100,16 @@ def menu(update: Update, context: CallbackContext) -> None:
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.message.reply_text('Main Menu:', reply_markup=reply_markup)
 
+    # Add commands to the keyboard
+    keyboard_buttons = [
+        [KeyboardButton("/task")],
+        [KeyboardButton("/generate_referral_link")],
+        [KeyboardButton("/check_balance")],
+        [KeyboardButton("/withdraw")]
+    ]
+    reply_markup = ReplyKeyboardMarkup(keyboard_buttons, one_time_keyboard=True)
+    update.message.reply_text('Use the commands below:', reply_markup=reply_markup)
+
 # Define the task command handler
 def task(update: Update, context: CallbackContext) -> None:
     keyboard = [
@@ -111,7 +140,7 @@ def withdraw(update: Update, context: CallbackContext) -> None:
         db.session.add(user)
         db.session.commit()
     context.user_data['withdraw_step'] = 'phone_number'
-    update.message.reply_text('Please send your phone number and network in the format: phone_number, network')
+    update.message.reply_text('Please send your phone number and network (e.g. 09100000000, MTN)')
 
 # Define the message handler for withdrawal process
 def handle_withdraw(update: Update, context: CallbackContext) -> None:
@@ -184,6 +213,7 @@ dispatcher.add_handler(CommandHandler("withdraw", withdraw))
 dispatcher.add_handler(CallbackQueryHandler(button))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_captcha))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_withdraw))
+dispatcher.add_handler(MessageHandler(Filters.status_update.new_chat_members, verify_group_membership))
 
 @app.route('/')
 def index() -> str:
