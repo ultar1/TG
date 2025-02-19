@@ -49,7 +49,7 @@ def handle_captcha(update: Update, context: CallbackContext) -> None:
     try:
         user_answer = int(update.message.text)
         if user_answer == answer:
-            prompt_join_group(update, context)
+            show_main_menu(update, context)
         else:
             num1 = random.randint(1, 10)
             num2 = random.randint(1, 10)
@@ -57,34 +57,6 @@ def handle_captcha(update: Update, context: CallbackContext) -> None:
             update.message.reply_text(f'Incorrect. Please try again: {num1} + {num2} = ?')
     except ValueError:
         update.message.reply_text('Please enter a valid number.')
-
-# Prompt the user to join the group
-def prompt_join_group(update: Update, context: CallbackContext) -> None:
-    keyboard = [
-        [InlineKeyboardButton("Join the main group", url="https://chat.whatsapp.com/J6FWyxJTPiQ21fbU29zg7L")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    update.message.reply_text('Please join the main group to proceed:', reply_markup=reply_markup)
-    context.user_data['awaiting_group_join'] = True
-
-# Verify if the user has joined the group (placeholder function)
-def verify_group_membership(update: Update, context: CallbackContext) -> None:
-    user_id = update.message.from_user.id
-    # Replace this with actual verification logic using WhatsApp API or third-party service
-    is_member = check_whatsapp_group_membership(user_id)
-    if is_member:
-        context.user_data['awaiting_group_join'] = False
-        update.message.reply_text('You have successfully joined the group. Please wait...')
-        time.sleep(5)
-        show_main_menu(update, context)
-    else:
-        update.message.reply_text('You must join the group to proceed.')
-
-# Placeholder function for checking WhatsApp group membership
-def check_whatsapp_group_membership(user_id: int) -> bool:
-    # Implement the actual logic to verify if the user has joined the WhatsApp group
-    # This is a placeholder and should be replaced with actual API calls or service integration
-    return True
 
 # Show the main menu
 def show_main_menu(update: Update, context: CallbackContext) -> None:
@@ -134,34 +106,7 @@ def contact(update: Update, context: CallbackContext) -> None:
 
 # Define the menu command handler
 def menu(update: Update, context: CallbackContext) -> None:
-    keyboard = [
-        [InlineKeyboardButton("Task", callback_data='task')],
-        [InlineKeyboardButton("Referral link", callback_data='generate_referral_link')],
-        [InlineKeyboardButton("Check your balance", callback_data='check_balance')],
-        [InlineKeyboardButton("Withdraw", callback_data='withdraw')],
-        [InlineKeyboardButton("Download YouTube Video", callback_data='download_video')]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    update.message.reply_text('Main Menu:', reply_markup=reply_markup)
-
-    # Add commands to the keyboard
-    keyboard_buttons = [
-        [KeyboardButton("/task")],
-        [KeyboardButton("/generate_referral_link")],
-        [KeyboardButton("/check_balance")],
-        [KeyboardButton("/withdraw")],
-        [KeyboardButton("/download_video")]
-    ]
-    reply_markup = ReplyKeyboardMarkup(keyboard_buttons, one_time_keyboard=True)
-    update.message.reply_text('Use the commands below:', reply_markup=reply_markup)
-
-# Define the task command handler
-def task(update: Update, context: CallbackContext) -> None:
-    keyboard = [
-        [InlineKeyboardButton("Join the main group", url="https://chat.whatsapp.com/J6FWyxJTPiQ21fbU29zg7L")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    update.callback_query.message.reply_text('Join:', reply_markup=reply_markup)
+    show_main_menu(update, context)
 
 # Define the generate referral link command handler
 def generate_referral_link(update: Update, context: CallbackContext) -> None:
@@ -276,9 +221,7 @@ def handle_compress_video(update: Update, context: CallbackContext) -> None:
 def button(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
     query.answer()
-    if query.data == 'task':
-        task(update, context)
-    elif query.data == 'generate_referral_link':
+    if query.data == 'generate_referral_link':
         generate_referral_link(query, context)
     elif query.data == 'check_balance':
         check_balance(query, context)
