@@ -36,23 +36,18 @@ dispatcher = Dispatcher(bot, None, use_context=True)
 
 # Define the start command handler with captcha
 def start(update: Update, context: CallbackContext) -> None:
-    user_id = update.message.from_user.id
-    num1 = random.randint(1, 10)
-    num2 = random.randint(1, 10)
+    num1, num2 = random.randint(1, 10), random.randint(1, 10)
     context.user_data['captcha_answer'] = num1 + num2
     update.message.reply_text(f'Welcome! Please solve this math problem to proceed: {num1} + {num2} = ?')
 
 # Define the captcha handler
 def handle_captcha(update: Update, context: CallbackContext) -> None:
-    user_id = update.message.from_user.id
-    answer = context.user_data.get('captcha_answer')
     try:
         user_answer = int(update.message.text)
-        if user_answer == answer:
+        if user_answer == context.user_data.get('captcha_answer'):
             show_main_menu(update, context)
         else:
-            num1 = random.randint(1, 10)
-            num2 = random.randint(1, 10)
+            num1, num2 = random.randint(1, 10), random.randint(1, 10)
             context.user_data['captcha_answer'] = num1 + num2
             update.message.reply_text(f'Incorrect. Please try again: {num1} + {num2} = ?')
     except ValueError:
@@ -136,18 +131,15 @@ def withdraw(update: Update, context: CallbackContext) -> None:
 def handle_withdraw(update: Update, context: CallbackContext) -> None:
     user_id = update.message.from_user.id
     user = User.query.filter_by(telegram_id=str(user_id)).first()
-    if context.user_data.get('withdraw_step') == 'phone_number':
-        try:
+    try:
+        if context.user_data.get('withdraw_step') == 'phone_number':
             phone_number, network = update.message.text.split(', ')
             user.phone_number = phone_number
             user.network = network
             db.session.commit()
             context.user_data['withdraw_step'] = 'amount'
             update.message.reply_text('Phone number and network saved. Please enter the amount you want to withdraw.')
-        except ValueError:
-            update.message.reply_text('Please enter the phone number and network in the correct format (e.g. 09100000000, MTN).')
-    elif context.user_data.get('withdraw_step') == 'amount':
-        try:
+        elif context.user_data.get('withdraw_step') == 'amount':
             amount = int(update.message.text)
             if amount > user.balance:
                 update.message.reply_text('Error: The amount exceeds your available balance.')
@@ -155,8 +147,8 @@ def handle_withdraw(update: Update, context: CallbackContext) -> None:
                 user.balance -= amount
                 db.session.commit()
                 update.message.reply_text(f'Success: {amount} NGN has been withdrawn. Your new balance is {user.balance} NGN.')
-        except ValueError:
-            update.message.reply_text('Please enter a valid amount.')
+    except ValueError:
+        update.message.reply_text('Please enter a valid input.')
 
 # Define the download video command handler
 def download_video(update: Update, context: CallbackContext) -> None:
@@ -217,6 +209,16 @@ def handle_compress_video(update: Update, context: CallbackContext) -> None:
     clip_resized.write_videofile('compressed_video.mp4', codec='libx264')
     update.message.reply_video(video=open('compressed_video.mp4', 'rb'))
 
+# Define the tag command handler
+def tag(update: Update, context: CallbackContext) -> None:
+    chat_id = update.message.chat_id
+    members = bot.get_chat_administrators(chat_id)
+    tags = " ".join([f"@{member.user.username}" for member in members if member.user.username])
+    if tags:
+        update.message.reply_text(f"Attention: {tags}")
+    else:
+        update.message.reply_text("No members with usernames found to tag.")
+
 # Define the callback query handler
 def button(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
@@ -273,6 +275,7 @@ dispatcher.add_handler(CommandHandler("download", download_video))
 dispatcher.add_handler(CommandHandler("ask", ask))
 dispatcher.add_handler(CommandHandler("upscale_image", upscale_image))
 dispatcher.add_handler(CommandHandler("compress_video", compress_video))
+dispatcher.add_handler(CommandHandler("tag", tag))
 dispatcher.add_handler(CallbackQueryHandler(button))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_captcha))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_withdraw))
@@ -280,7 +283,6 @@ dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_do
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_ask))
 dispatcher.add_handler(MessageHandler(Filters.photo & ~Filters.command, handle_upscale_image))
 dispatcher.add_handler(MessageHandler(Filters.video & ~Filters.command, handle_compress_video))
-dispatcher.add_handler(MessageHandler(Filters.status_update.new_chat_members, verify_group_membership))
 
 @app.route('/')
 def index() -> str:
