@@ -1,7 +1,7 @@
 import os
 import random
 from flask import Flask, request
-from telegram import Update, Bot, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
+from telegram import Update, Bot, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, ChatPermissions
 from telegram.ext import Dispatcher, CommandHandler, CallbackContext, CallbackQueryHandler, MessageHandler, Filters
 from flask_sqlalchemy import SQLAlchemy
 from pytube import YouTube
@@ -34,52 +34,37 @@ db.create_all()
 bot = Bot(token=os.getenv('TELEGRAM_BOT_TOKEN'))
 dispatcher = Dispatcher(bot, None, use_context=True)
 
-# Define the start command handler with captcha
+# Define the start command handler
 def start(update: Update, context: CallbackContext) -> None:
-    num1, num2 = random.randint(1, 10), random.randint(1, 10)
-    context.user_data['captcha_answer'] = num1 + num2
-    update.message.reply_text(f'Welcome! Please solve this math problem to proceed: {num1} + {num2} = ?')
-
-# Define the captcha handler
-def handle_captcha(update: Update, context: CallbackContext) -> None:
-    try:
-        user_answer = int(update.message.text)
-        if user_answer == context.user_data.get('captcha_answer'):
-            show_main_menu(update, context)
-        else:
-            num1, num2 = random.randint(1, 10), random.randint(1, 10)
-            context.user_data['captcha_answer'] = num1 + num2
-            update.message.reply_text(f'Incorrect. Please try again: {num1} + {num2} = ?')
-    except ValueError:
-        update.message.reply_text('Please enter a valid number.')
+    show_main_menu(update, context)
 
 # Show the main menu
 def show_main_menu(update: Update, context: CallbackContext) -> None:
     keyboard = [
-        [InlineKeyboardButton("Referral link", callback_data='generate_referral_link')],
-        [InlineKeyboardButton("Check balance", callback_data='check_balance')],
-        [InlineKeyboardButton("Withdraw", callback_data='withdraw')],
-        [InlineKeyboardButton("Download video", callback_data='download_video')],
-        [InlineKeyboardButton("Upscale image", callback_data='upscale_image')],
-        [InlineKeyboardButton("Compress video", callback_data='compress_video')],
-        [InlineKeyboardButton("Ask GPT", callback_data='ask_gpt')],
-        [InlineKeyboardButton("Play music", callback_data='play_music')],
-        [InlineKeyboardButton("Group menu", callback_data='group_menu')]
+        [InlineKeyboardButton("🔗 Referral link", callback_data='generate_referral_link')],
+        [InlineKeyboardButton("💰 Check balance", callback_data='check_balance')],
+        [InlineKeyboardButton("💸 Withdraw", callback_data='withdraw')],
+        [InlineKeyboardButton("📹 Download video", callback_data='download_video')],
+        [InlineKeyboardButton("🖼️ Upscale image", callback_data='upscale_image')],
+        [InlineKeyboardButton("🎥 Compress video", callback_data='compress_video')],
+        [InlineKeyboardButton("🤖 Ask GPT", callback_data='ask_gpt')],
+        [InlineKeyboardButton("🎵 Play music", callback_data='play_music')],
+        [InlineKeyboardButton("👥 Group menu", callback_data='group_menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    update.message.reply_text('Main Menu:', reply_markup=reply_markup)
+    update.message.reply_text('📋 **Main Menu**', reply_markup=reply_markup, parse_mode='Markdown')
 
     # Add commands to the keyboard
     keyboard_buttons = [
-        [KeyboardButton("/generate_referral_link")],
-        [KeyboardButton("/check_balance")],
-        [KeyboardButton("/withdraw")],
-        [KeyboardButton("/download_video")],
-        [KeyboardButton("/upscale_image")],
-        [KeyboardButton("/compress_video")],
-        [KeyboardButton("/ask_gpt")],
-        [KeyboardButton("/play_music")],
-        [KeyboardButton("/group_menu")]
+        [KeyboardButton("🔗 /generate_referral_link")],
+        [KeyboardButton("💰 /check_balance")],
+        [KeyboardButton("💸 /withdraw")],
+        [KeyboardButton("📹 /download_video")],
+        [KeyboardButton("🖼️ /upscale_image")],
+        [KeyboardButton("🎥 /compress_video")],
+        [KeyboardButton("🤖 /ask_gpt")],
+        [KeyboardButton("🎵 /play_music")],
+        [KeyboardButton("👥 /group_menu")]
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard_buttons, one_time_keyboard=True)
     update.message.reply_text('Use the commands below:', reply_markup=reply_markup)
@@ -87,27 +72,26 @@ def show_main_menu(update: Update, context: CallbackContext) -> None:
 # Define the group menu command handler
 def group_menu(update: Update, context: CallbackContext) -> None:
     keyboard = [
-        [InlineKeyboardButton("Tag", callback_data='tag')],
-        [InlineKeyboardButton("Mute", callback_data='mute')],
-        [InlineKeyboardButton("Antilink", callback_data='antilink')]
+        [InlineKeyboardButton("🔔 Tag", callback_data='tag')],
+        [InlineKeyboardButton("🔇 Mute", callback_data='mute')],
+        [InlineKeyboardButton("🚫 Antilink", callback_data='antilink')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    update.message.reply_text('Group Menu:', reply_markup=reply_markup)
+    update.message.reply_text('👥 **Group Menu**', reply_markup=reply_markup, parse_mode='Markdown')
 
 # Define the help command handler
 def help_command(update: Update, context: CallbackContext) -> None:
     update.message.reply_text(
         'Here are the available commands:\n'
-        '/start - Start the bot\n'
-        '/help - Show this help message\n'
-        '/about - About this bot\n'
-        '/contact - Contact information\n'
-        '/menu - Show the main menu\n'
-        '/withdraw - Withdraw funds\n'
-        '/download_video - Download YouTube video\n'
-        '/ask_gpt - Ask GPT-4 a question\n'
-        '/play_music - Play music\n'
-        '/group_menu - Show group menu'
+        '🔗 /generate_referral_link - Generate your referral link\n'
+        '💰 /check_balance - Check your balance\n'
+        '💸 /withdraw - Withdraw funds\n'
+        '📹 /download_video - Download YouTube video\n'
+        '🖼️ /upscale_image - Upscale an image\n'
+        '🎥 /compress_video - Compress a video\n'
+        '🤖 /ask_gpt - Ask GPT-4 a question\n'
+        '🎵 /play_music - Play music\n'
+        '👥 /group_menu - Show group menu'
     )
 
 # Define the about command handler
@@ -253,7 +237,9 @@ def tag(update: Update, context: CallbackContext) -> None:
 
 # Define the mute command handler
 def mute(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text('Mute functionality is not implemented yet.')
+    chat_id = update.message.chat_id
+    bot.restrict_chat_member(chat_id, update.message.reply_to_message.from_user.id, ChatPermissions(can_send_messages=False))
+    update.message.reply_text('User has been muted.')
 
 # Define the antilink command handler
 def antilink(update: Update, context: CallbackContext) -> None:
@@ -332,7 +318,6 @@ dispatcher.add_handler(CommandHandler("tag", tag))
 dispatcher.add_handler(CommandHandler("mute", mute))
 dispatcher.add_handler(CommandHandler("antilink", antilink))
 dispatcher.add_handler(CallbackQueryHandler(button))
-dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_captcha))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_withdraw))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_download))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_ask))
