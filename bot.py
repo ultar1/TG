@@ -57,13 +57,13 @@ def handle_captcha(update: Update, context: CallbackContext) -> None:
 def show_main_menu(update: Update, context: CallbackContext) -> None:
     keyboard = [
         [InlineKeyboardButton("Referral link", callback_data='generate_referral_link')],
-        [InlineKeyboardButton("Check your balance", callback_data='check_balance')],
+        [InlineKeyboardButton("Check balance", callback_data='check_balance')],
         [InlineKeyboardButton("Withdraw", callback_data='withdraw')],
-        [InlineKeyboardButton("Download YouTube Video", callback_data='download_video')],
-        [InlineKeyboardButton("Upscale Image", callback_data='upscale_image')],
-        [InlineKeyboardButton("Compress Video", callback_data='compress_video')],
+        [InlineKeyboardButton("Download video", callback_data='download_video')],
+        [InlineKeyboardButton("Upscale image", callback_data='upscale_image')],
+        [InlineKeyboardButton("Compress video", callback_data='compress_video')],
         [InlineKeyboardButton("Ask GPT", callback_data='ask_gpt')],
-        [InlineKeyboardButton("Convert Music", callback_data='convert_music')]
+        [InlineKeyboardButton("Convert music", callback_data='convert_music')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.message.reply_text('Main Menu:', reply_markup=reply_markup)
@@ -92,7 +92,7 @@ def help_command(update: Update, context: CallbackContext) -> None:
         '/contact - Contact information\n'
         '/menu - Show the main menu\n'
         '/withdraw - Withdraw funds\n'
-        '/download - Download YouTube video\n'
+        '/download_video - Download YouTube video\n'
         '/ask_gpt - Ask GPT-4 a question\n'
         '/convert_music - Convert music file'
     )
@@ -215,6 +215,7 @@ def handle_compress_video(update: Update, context: CallbackContext) -> None:
     clip = VideoFileClip('video.mp4')
     clip_resized = clip.resize(height=360)
     clip_resized.write_videofile('compressed_video.mp4', codec='libx264', audio_codec='aac')
+    update.message.reply_text('Video compression complete.')
     update.message.reply_video(video=open('compressed_video.mp4', 'rb'))
 
 # Define the convert music command handler
@@ -295,7 +296,7 @@ dispatcher.add_handler(CommandHandler("about", about))
 dispatcher.add_handler(CommandHandler("contact", contact))
 dispatcher.add_handler(CommandHandler("menu", menu))
 dispatcher.add_handler(CommandHandler("withdraw", withdraw))
-dispatcher.add_handler(CommandHandler("download", download_video))
+dispatcher.add_handler(CommandHandler("download_video", download_video))
 dispatcher.add_handler(CommandHandler("ask", ask))
 dispatcher.add_handler(CommandHandler("upscale_image", upscale_image))
 dispatcher.add_handler(CommandHandler("compress_video", compress_video))
