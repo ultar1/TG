@@ -5,7 +5,6 @@ from flask import Flask, request
 from telegram import Update, Bot, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, ChatPermissions
 from telegram.ext import Dispatcher, CommandHandler, CallbackContext, CallbackQueryHandler, MessageHandler, Filters
 from flask_sqlalchemy import SQLAlchemy
-from pytube import YouTube
 import openai
 from PIL import Image, ImageEnhance
 from moviepy.editor import VideoFileClip
@@ -45,7 +44,6 @@ def show_main_menu(update: Update, context: CallbackContext) -> None:
         [InlineKeyboardButton("🔗 Referral link", callback_data='generate_referral_link')],
         [InlineKeyboardButton("💰 Check balance", callback_data='check_balance')],
         [InlineKeyboardButton("💸 Withdraw", callback_data='withdraw')],
-        [InlineKeyboardButton("📹 Download video", callback_data='download_video')],
         [InlineKeyboardButton("🖼️ Upscale image", callback_data='upscale_image')],
         [InlineKeyboardButton("🎥 Compress video", callback_data='compress_video')],
         [InlineKeyboardButton("🤖 Ask GPT", callback_data='ask_gpt')],
@@ -64,7 +62,6 @@ def show_main_menu(update: Update, context: CallbackContext) -> None:
         [KeyboardButton("🔗 /generate_referral_link")],
         [KeyboardButton("💰 /check_balance")],
         [KeyboardButton("💸 /withdraw")],
-        [KeyboardButton("📹 /download_video")],
         [KeyboardButton("🖼️ /upscale_image")],
         [KeyboardButton("🎥 /compress_video")],
         [KeyboardButton("🤖 /ask_gpt")],
@@ -95,7 +92,6 @@ def help_command(update: Update, context: CallbackContext) -> None:
         '🔗 /generate_referral_link - Generate your referral link\n'
         '💰 /check_balance - Check your balance\n'
         '💸 /withdraw - Withdraw funds\n'
-        '📹 /download_video - Download YouTube video\n'
         '🖼️ /upscale_image - Upscale an image\n'
         '🎥 /compress_video - Compress a video\n'
         '🤖 /ask_gpt - Ask GPT-4 a question\n'
@@ -165,21 +161,6 @@ def handle_withdraw(update: Update, context: CallbackContext) -> None:
                 update.message.reply_text(f'Success: {amount} NGN has been withdrawn. Your new balance is {user.balance} NGN.')
     except ValueError:
         update.message.reply_text('Please enter a valid input.')
-
-# Define the download video command handler
-def download_video(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text('Please send the YouTube URL of the video you want to download.')
-
-# Define the message handler for downloading YouTube videos
-def handle_download(update: Update, context: CallbackContext) -> None:
-    url = update.message.text
-    try:
-        yt = YouTube(url)
-        stream = yt.streams.get_highest_resolution()
-        stream.download(output_path='downloads/', filename=f'{yt.title}.mp4')
-        update.message.reply_text(f'Success! The video "{yt.title}" has been downloaded.')
-    except Exception as e:
-        update.message.reply_text(f'Error: {str(e)}')
 
 # Define the ask command handler for GPT-4
 def ask(update: Update, context: CallbackContext) -> None:
@@ -328,8 +309,6 @@ def button(update: Update, context: CallbackContext) -> None:
         check_balance(query, context)
     elif query.data == 'withdraw':
         withdraw(query, context)
-    elif query.data == 'download_video':
-        download_video(query, context)
     elif query.data == 'upscale_image':
         upscale_image(query, context)
     elif query.data == 'compress_video':
@@ -390,7 +369,6 @@ dispatcher.add_handler(CommandHandler("about", about))
 dispatcher.add_handler(CommandHandler("contact", contact))
 dispatcher.add_handler(CommandHandler("menu", menu))
 dispatcher.add_handler(CommandHandler("withdraw", withdraw))
-dispatcher.add_handler(CommandHandler("download_video", download_video))
 dispatcher.add_handler(CommandHandler("ask_gpt", ask))
 dispatcher.add_handler(CommandHandler("upscale_image", upscale_image))
 dispatcher.add_handler(CommandHandler("compress_video", compress_video))
@@ -404,7 +382,6 @@ dispatcher.add_handler(CommandHandler("mute", mute))
 dispatcher.add_handler(CommandHandler("antilink", antilink))
 dispatcher.add_handler(CallbackQueryHandler(button))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_withdraw))
-dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_download))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_ask))
 dispatcher.add_handler(MessageHandler(Filters.photo & ~Filters.command, handle_upscale_image))
 dispatcher.add_handler(MessageHandler(Filters.video & ~Filters.command, handle_compress_video))
