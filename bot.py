@@ -63,7 +63,8 @@ def show_main_menu(update: Update, context: CallbackContext) -> None:
         [InlineKeyboardButton("Upscale image", callback_data='upscale_image')],
         [InlineKeyboardButton("Compress video", callback_data='compress_video')],
         [InlineKeyboardButton("Ask GPT", callback_data='ask_gpt')],
-        [InlineKeyboardButton("Convert music", callback_data='convert_music')]
+        [InlineKeyboardButton("Convert music", callback_data='convert_music')],
+        [InlineKeyboardButton("Play music", callback_data='play_music')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.message.reply_text('Main Menu:', reply_markup=reply_markup)
@@ -77,7 +78,8 @@ def show_main_menu(update: Update, context: CallbackContext) -> None:
         [KeyboardButton("/upscale_image")],
         [KeyboardButton("/compress_video")],
         [KeyboardButton("/ask_gpt")],
-        [KeyboardButton("/convert_music")]
+        [KeyboardButton("/convert_music")],
+        [KeyboardButton("/play_music")]
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard_buttons, one_time_keyboard=True)
     update.message.reply_text('Use the commands below:', reply_markup=reply_markup)
@@ -94,7 +96,8 @@ def help_command(update: Update, context: CallbackContext) -> None:
         '/withdraw - Withdraw funds\n'
         '/download_video - Download YouTube video\n'
         '/ask_gpt - Ask GPT-4 a question\n'
-        '/convert_music - Convert music file'
+        '/convert_music - Convert music file\n'
+        '/play_music - Play music'
     )
 
 # Define the about command handler
@@ -230,6 +233,16 @@ def handle_convert_music(update: Update, context: CallbackContext) -> None:
     sound.export('music.wav', format='wav')
     update.message.reply_audio(audio=open('music.wav', 'rb'))
 
+# Define the play music command handler
+def play_music(update: Update, context: CallbackContext) -> None:
+    update.message.reply_text('Please send the music file you want to play.')
+
+# Define the message handler for playing music files
+def handle_play_music(update: Update, context: CallbackContext) -> None:
+    audio = update.message.audio.get_file()
+    audio.download('music.mp3')
+    update.message.reply_audio(audio=open('music.mp3', 'rb'))
+
 # Define the tag command handler
 def tag(update: Update, context: CallbackContext) -> None:
     chat_id = update.message.chat_id
@@ -260,6 +273,8 @@ def button(update: Update, context: CallbackContext) -> None:
         ask(query, context)
     elif query.data == 'convert_music':
         convert_music(query, context)
+    elif query.data == 'play_music':
+        play_music(query, context)
 
 # Define the referral endpoint
 @app.route('/referral/<int:inviter_id>/<int:new_user_id>', methods=['GET'])
@@ -297,10 +312,11 @@ dispatcher.add_handler(CommandHandler("contact", contact))
 dispatcher.add_handler(CommandHandler("menu", menu))
 dispatcher.add_handler(CommandHandler("withdraw", withdraw))
 dispatcher.add_handler(CommandHandler("download_video", download_video))
-dispatcher.add_handler(CommandHandler("ask", ask))
+dispatcher.add_handler(CommandHandler("ask_gpt", ask))
 dispatcher.add_handler(CommandHandler("upscale_image", upscale_image))
 dispatcher.add_handler(CommandHandler("compress_video", compress_video))
 dispatcher.add_handler(CommandHandler("convert_music", convert_music))
+dispatcher.add_handler(CommandHandler("play_music", play_music))
 dispatcher.add_handler(CommandHandler("tag", tag))
 dispatcher.add_handler(CallbackQueryHandler(button))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_captcha))
@@ -310,6 +326,7 @@ dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_as
 dispatcher.add_handler(MessageHandler(Filters.photo & ~Filters.command, handle_upscale_image))
 dispatcher.add_handler(MessageHandler(Filters.video & ~Filters.command, handle_compress_video))
 dispatcher.add_handler(MessageHandler(Filters.audio & ~Filters.command, handle_convert_music))
+dispatcher.add_handler(MessageHandler(Filters.audio & ~Filters.command, handle_play_music))
 
 @app.route('/')
 def index() -> str:
