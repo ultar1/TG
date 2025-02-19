@@ -63,8 +63,8 @@ def show_main_menu(update: Update, context: CallbackContext) -> None:
         [InlineKeyboardButton("Upscale image", callback_data='upscale_image')],
         [InlineKeyboardButton("Compress video", callback_data='compress_video')],
         [InlineKeyboardButton("Ask GPT", callback_data='ask_gpt')],
-        [InlineKeyboardButton("Convert music", callback_data='convert_music')],
-        [InlineKeyboardButton("Play music", callback_data='play_music')]
+        [InlineKeyboardButton("Play music", callback_data='play_music')],
+        [InlineKeyboardButton("Group menu", callback_data='group_menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.message.reply_text('Main Menu:', reply_markup=reply_markup)
@@ -78,11 +78,21 @@ def show_main_menu(update: Update, context: CallbackContext) -> None:
         [KeyboardButton("/upscale_image")],
         [KeyboardButton("/compress_video")],
         [KeyboardButton("/ask_gpt")],
-        [KeyboardButton("/convert_music")],
-        [KeyboardButton("/play_music")]
+        [KeyboardButton("/play_music")],
+        [KeyboardButton("/group_menu")]
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard_buttons, one_time_keyboard=True)
     update.message.reply_text('Use the commands below:', reply_markup=reply_markup)
+
+# Define the group menu command handler
+def group_menu(update: Update, context: CallbackContext) -> None:
+    keyboard = [
+        [InlineKeyboardButton("Tag", callback_data='tag')],
+        [InlineKeyboardButton("Mute", callback_data='mute')],
+        [InlineKeyboardButton("Antilink", callback_data='antilink')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    update.message.reply_text('Group Menu:', reply_markup=reply_markup)
 
 # Define the help command handler
 def help_command(update: Update, context: CallbackContext) -> None:
@@ -96,8 +106,8 @@ def help_command(update: Update, context: CallbackContext) -> None:
         '/withdraw - Withdraw funds\n'
         '/download_video - Download YouTube video\n'
         '/ask_gpt - Ask GPT-4 a question\n'
-        '/convert_music - Convert music file\n'
-        '/play_music - Play music'
+        '/play_music - Play music\n'
+        '/group_menu - Show group menu'
     )
 
 # Define the about command handler
@@ -221,18 +231,6 @@ def handle_compress_video(update: Update, context: CallbackContext) -> None:
     update.message.reply_text('Video compression complete.')
     update.message.reply_video(video=open('compressed_video.mp4', 'rb'))
 
-# Define the convert music command handler
-def convert_music(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text('Please send the music file you want to convert.')
-
-# Define the message handler for converting music files
-def handle_convert_music(update: Update, context: CallbackContext) -> None:
-    audio = update.message.audio.get_file()
-    audio.download('music.mp3')
-    sound = AudioSegment.from_mp3('music.mp3')
-    sound.export('music.wav', format='wav')
-    update.message.reply_audio(audio=open('music.wav', 'rb'))
-
 # Define the play music command handler
 def play_music(update: Update, context: CallbackContext) -> None:
     update.message.reply_text('Please send the music file you want to play.')
@@ -253,6 +251,14 @@ def tag(update: Update, context: CallbackContext) -> None:
     else:
         update.message.reply_text("No members with usernames found to tag.")
 
+# Define the mute command handler
+def mute(update: Update, context: CallbackContext) -> None:
+    update.message.reply_text('Mute functionality is not implemented yet.')
+
+# Define the antilink command handler
+def antilink(update: Update, context: CallbackContext) -> None:
+    update.message.reply_text('Antilink functionality is not implemented yet.')
+
 # Define the callback query handler
 def button(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
@@ -271,10 +277,16 @@ def button(update: Update, context: CallbackContext) -> None:
         compress_video(query, context)
     elif query.data == 'ask_gpt':
         ask(query, context)
-    elif query.data == 'convert_music':
-        convert_music(query, context)
     elif query.data == 'play_music':
         play_music(query, context)
+    elif query.data == 'group_menu':
+        group_menu(query, context)
+    elif query.data == 'tag':
+        tag(query, context)
+    elif query.data == 'mute':
+        mute(query, context)
+    elif query.data == 'antilink':
+        antilink(query, context)
 
 # Define the referral endpoint
 @app.route('/referral/<int:inviter_id>/<int:new_user_id>', methods=['GET'])
@@ -315,9 +327,10 @@ dispatcher.add_handler(CommandHandler("download_video", download_video))
 dispatcher.add_handler(CommandHandler("ask_gpt", ask))
 dispatcher.add_handler(CommandHandler("upscale_image", upscale_image))
 dispatcher.add_handler(CommandHandler("compress_video", compress_video))
-dispatcher.add_handler(CommandHandler("convert_music", convert_music))
 dispatcher.add_handler(CommandHandler("play_music", play_music))
 dispatcher.add_handler(CommandHandler("tag", tag))
+dispatcher.add_handler(CommandHandler("mute", mute))
+dispatcher.add_handler(CommandHandler("antilink", antilink))
 dispatcher.add_handler(CallbackQueryHandler(button))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_captcha))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_withdraw))
@@ -325,7 +338,6 @@ dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_do
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_ask))
 dispatcher.add_handler(MessageHandler(Filters.photo & ~Filters.command, handle_upscale_image))
 dispatcher.add_handler(MessageHandler(Filters.video & ~Filters.command, handle_compress_video))
-dispatcher.add_handler(MessageHandler(Filters.audio & ~Filters.command, handle_convert_music))
 dispatcher.add_handler(MessageHandler(Filters.audio & ~Filters.command, handle_play_music))
 
 @app.route('/')
