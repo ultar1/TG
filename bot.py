@@ -7,6 +7,8 @@ from telegram.ext import Dispatcher, CommandHandler, CallbackContext, CallbackQu
 from flask_sqlalchemy import SQLAlchemy
 from pytube import YouTube
 import openai
+from PIL import Image
+from moviepy.editor import VideoFileClip
 
 # Initialize Flask app and SQLAlchemy
 app = Flask(__name__)
@@ -90,7 +92,9 @@ def show_main_menu(update: Update, context: CallbackContext) -> None:
         [InlineKeyboardButton("Referral link", callback_data='generate_referral_link')],
         [InlineKeyboardButton("Check your balance", callback_data='check_balance')],
         [InlineKeyboardButton("Withdraw", callback_data='withdraw')],
-        [InlineKeyboardButton("Download YouTube Video", callback_data='download_video')]
+        [InlineKeyboardButton("Download YouTube Video", callback_data='download_video')],
+        [InlineKeyboardButton("Upscale Image", callback_data='upscale_image')],
+        [InlineKeyboardButton("Compress Video", callback_data='compress_video')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.message.reply_text('Main Menu:', reply_markup=reply_markup)
@@ -100,7 +104,9 @@ def show_main_menu(update: Update, context: CallbackContext) -> None:
         [KeyboardButton("/generate_referral_link")],
         [KeyboardButton("/check_balance")],
         [KeyboardButton("/withdraw")],
-        [KeyboardButton("/download_video")]
+        [KeyboardButton("/download_video")],
+        [KeyboardButton("/upscale_image")],
+        [KeyboardButton("/compress_video")]
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard_buttons, one_time_keyboard=True)
     update.message.reply_text('Use the commands below:', reply_markup=reply_markup)
@@ -240,6 +246,32 @@ def handle_ask(update: Update, context: CallbackContext) -> None:
     except Exception as e:
         update.message.reply_text(f'Error: {str(e)}')
 
+# Define the upscale image command handler
+def upscale_image(update: Update, context: CallbackContext) -> None:
+    update.message.reply_text('Please send the image you want to upscale.')
+
+# Define the message handler for upscaling images
+def handle_upscale_image(update: Update, context: CallbackContext) -> None:
+    photo = update.message.photo[-1].get_file()
+    photo.download('image.jpg')
+    img = Image.open('image.jpg')
+    img = img.resize((img.width * 2, img.height * 2), Image.ANTIALIAS)
+    img.save('upscaled_image.jpg')
+    update.message.reply_photo(photo=open('upscaled_image.jpg', 'rb'))
+
+# Define the compress video command handler
+def compress_video(update: Update, context: CallbackContext) -> None:
+    update.message.reply_text('Please send the video you want to compress.')
+
+# Define the message handler for compressing videos
+def handle_compress_video(update: Update, context: CallbackContext) -> None:
+    video = update.message.video.get_file()
+    video.download('video.mp4')
+    clip = VideoFileClip('video.mp4')
+    clip_resized = clip.resize(height=360)
+    clip_resized.write_videofile('compressed_video.mp4', codec='libx264')
+    update.message.reply_video(video=open('compressed_video.mp4', 'rb'))
+
 # Define the callback query handler
 def button(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
@@ -254,6 +286,10 @@ def button(update: Update, context: CallbackContext) -> None:
         withdraw(query, context)
     elif query.data == 'download_video':
         download_video(query, context)
+    elif query.data == 'upscale_image':
+        upscale_image(query, context)
+    elif query.data == 'compress_video':
+        compress_video(query, context)
 
 # Define the referral endpoint
 @app.route('/referral/<int:inviter_id>/<int:new_user_id>', methods=['GET'])
@@ -292,11 +328,15 @@ dispatcher.add_handler(CommandHandler("menu", menu))
 dispatcher.add_handler(CommandHandler("withdraw", withdraw))
 dispatcher.add_handler(CommandHandler("download", download_video))
 dispatcher.add_handler(CommandHandler("ask", ask))
+dispatcher.add_handler(CommandHandler("upscale_image", upscale_image))
+dispatcher.add_handler(CommandHandler("compress_video", compress_video))
 dispatcher.add_handler(CallbackQueryHandler(button))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_captcha))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_withdraw))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_download))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_ask))
+dispatcher.add_handler(MessageHandler(Filters.photo & ~Filters.command, handle_upscale_image))
+dispatcher.add_handler(MessageHandler(Filters.video & ~Filters.command, handle_compress_video))
 dispatcher.add_handler(MessageHandler(Filters.status_update.new_chat_members, verify_group_membership))
 
 @app.route('/')
