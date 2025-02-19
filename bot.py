@@ -59,15 +59,41 @@ def prompt_join_group(update: Update, context: CallbackContext) -> None:
     update.message.reply_text('Please join the main group to proceed:', reply_markup=reply_markup)
     context.user_data['awaiting_group_join'] = True
 
-# Verify if the user has joined the group
+# Verify if the user has joined the group (placeholder function)
 def verify_group_membership(update: Update, context: CallbackContext) -> None:
     user_id = update.message.from_user.id
-    chat_member = bot.get_chat_member(chat_id='@your_group_chat_id', user_id=user_id)
-    if chat_member.status in ['member', 'administrator', 'creator']:
+    # Replace this with actual verification logic using WhatsApp API or third-party service
+    is_member = check_whatsapp_group_membership(user_id)
+    if is_member:
         context.user_data['awaiting_group_join'] = False
-        menu(update, context)
+        show_main_menu(update, context)
     else:
         update.message.reply_text('You must join the group to proceed.')
+
+# Placeholder function for checking WhatsApp group membership
+def check_whatsapp_group_membership(user_id: int) -> bool:
+    # Implement the actual logic to verify if the user has joined the WhatsApp group
+    # This is a placeholder and should be replaced with actual API calls or service integration
+    return True
+
+# Show the main menu
+def show_main_menu(update: Update, context: CallbackContext) -> None:
+    keyboard = [
+        [InlineKeyboardButton("Referral link", callback_data='generate_referral_link')],
+        [InlineKeyboardButton("Check your balance", callback_data='check_balance')],
+        [InlineKeyboardButton("Withdraw", callback_data='withdraw')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    update.message.reply_text('Main Menu:', reply_markup=reply_markup)
+
+    # Add commands to the keyboard
+    keyboard_buttons = [
+        [KeyboardButton("/generate_referral_link")],
+        [KeyboardButton("/check_balance")],
+        [KeyboardButton("/withdraw")]
+    ]
+    reply_markup = ReplyKeyboardMarkup(keyboard_buttons, one_time_keyboard=True)
+    update.message.reply_text('Use the commands below:', reply_markup=reply_markup)
 
 # Define the help command handler
 def help_command(update: Update, context: CallbackContext) -> None:
@@ -147,20 +173,26 @@ def handle_withdraw(update: Update, context: CallbackContext) -> None:
     user_id = update.message.from_user.id
     user = User.query.filter_by(telegram_id=str(user_id)).first()
     if context.user_data.get('withdraw_step') == 'phone_number':
-        phone_number, network = update.message.text.split(', ')
-        user.phone_number = phone_number
-        user.network = network
-        db.session.commit()
-        context.user_data['withdraw_step'] = 'amount'
-        update.message.reply_text('Phone number and network saved. Please enter the amount you want to withdraw.')
-    elif context.user_data.get('withdraw_step') == 'amount':
-        amount = int(update.message.text)
-        if amount > user.balance:
-            update.message.reply_text('Error: The amount exceeds your available balance.')
-        else:
-            user.balance -= amount
+        try:
+            phone_number, network = update.message.text.split(', ')
+            user.phone_number = phone_number
+            user.network = network
             db.session.commit()
-            update.message.reply_text(f'Success: {amount} NGN has been withdrawn. Your new balance is {user.balance} NGN.')
+            context.user_data['withdraw_step'] = 'amount'
+            update.message.reply_text('Phone number and network saved. Please enter the amount you want to withdraw.')
+        except ValueError:
+            update.message.reply_text('Please enter the phone number and network in the correct format (e.g. 09100000000, MTN).')
+    elif context.user_data.get('withdraw_step') == 'amount':
+        try:
+            amount = int(update.message.text)
+            if amount > user.balance:
+                update.message.reply_text('Error: The amount exceeds your available balance.')
+            else:
+                user.balance -= amount
+                db.session.commit()
+                update.message.reply_text(f'Success: {amount} NGN has been withdrawn. Your new balance is {user.balance} NGN.')
+        except ValueError:
+            update.message.reply_text('Please enter a valid amount.')
 
 # Define the callback query handler
 def button(update: Update, context: CallbackContext) -> None:
