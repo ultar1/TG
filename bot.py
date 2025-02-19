@@ -1,5 +1,6 @@
 import os
 import random
+import requests
 from flask import Flask, request
 from telegram import Update, Bot, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, ChatPermissions
 from telegram.ext import Dispatcher, CommandHandler, CallbackContext, CallbackQueryHandler, MessageHandler, Filters
@@ -49,6 +50,10 @@ def show_main_menu(update: Update, context: CallbackContext) -> None:
         [InlineKeyboardButton("🎥 Compress video", callback_data='compress_video')],
         [InlineKeyboardButton("🤖 Ask GPT", callback_data='ask_gpt')],
         [InlineKeyboardButton("🎵 Play music", callback_data='play_music')],
+        [InlineKeyboardButton("🌦️ Weather", callback_data='weather')],
+        [InlineKeyboardButton("📰 News", callback_data='news')],
+        [InlineKeyboardButton("🌐 Translate", callback_data='translate')],
+        [InlineKeyboardButton("😂 Joke", callback_data='joke')],
         [InlineKeyboardButton("👥 Group menu", callback_data='group_menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -64,6 +69,10 @@ def show_main_menu(update: Update, context: CallbackContext) -> None:
         [KeyboardButton("🎥 /compress_video")],
         [KeyboardButton("🤖 /ask_gpt")],
         [KeyboardButton("🎵 /play_music")],
+        [KeyboardButton("🌦️ /weather")],
+        [KeyboardButton("📰 /news")],
+        [KeyboardButton("🌐 /translate")],
+        [KeyboardButton("😂 /joke")],
         [KeyboardButton("👥 /group_menu")]
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard_buttons, one_time_keyboard=True)
@@ -91,6 +100,10 @@ def help_command(update: Update, context: CallbackContext) -> None:
         '🎥 /compress_video - Compress a video\n'
         '🤖 /ask_gpt - Ask GPT-4 a question\n'
         '🎵 /play_music - Play music\n'
+        '🌦️ /weather - Get the current weather\n'
+        '📰 /news - Get the latest news\n'
+        '🌐 /translate - Translate text\n'
+        '😂 /joke - Get a random joke\n'
         '👥 /group_menu - Show group menu'
     )
 
@@ -225,6 +238,66 @@ def handle_play_music(update: Update, context: CallbackContext) -> None:
     audio.download('music.mp3')
     update.message.reply_audio(audio=open('music.mp3', 'rb'))
 
+# Define the weather command handler
+def weather(update: Update, context: CallbackContext) -> None:
+    update.message.reply_text('Please send the location for which you want to get the weather.')
+
+# Define the message handler for getting weather
+def handle_weather(update: Update, context: CallbackContext) -> None:
+    location = update.message.text
+    api_key = os.getenv('WEATHER_API_KEY')
+    url = f'http://api.openweathermap.org/data/2.5/weather?q={location}&appid={api_key}&units=metric'
+    response = requests.get(url).json()
+    if response['cod'] == 200:
+        weather_description = response['weather'][0]['description']
+        temperature = response['main']['temp']
+        update.message.reply_text(f'The weather in {location} is currently {weather_description} with a temperature of {temperature}°C.')
+    else:
+        update.message.reply_text('Could not retrieve weather data. Please check the location and try again.')
+
+# Define the news command handler
+def news(update: Update, context: CallbackContext) -> None:
+    update.message.reply_text('Fetching the latest news headlines...')
+
+# Define the message handler for getting news
+def handle_news(update: Update, context: CallbackContext) -> None:
+    api_key = os.getenv('NEWS_API_KEY')
+    url = f'https://newsapi.org/v2/top-headlines?country=us&apiKey={api_key}'
+    response = requests.get(url).json()
+    if response['status'] == 'ok':
+        headlines = [article['title'] for article in response['articles'][:5]]
+        update.message.reply_text('\n'.join(headlines))
+    else:
+        update.message.reply_text('Could not retrieve news. Please try again later.')
+
+# Define the translate command handler
+def translate(update: Update, context: CallbackContext) -> None:
+    update.message.reply_text('Please send the text you want to translate followed by the target language code (e.g., "Hello, world! es").')
+
+# Define the message handler for translating text
+def handle_translate(update: Update, context: CallbackContext) -> None:
+    try:
+        text, target_language = update.message.text.rsplit(' ', 1)
+        api_key = os.getenv('TRANSLATE_API_KEY')
+        url = f'https://translation.googleapis.com/language/translate/v2?key={api_key}'
+        data = {'q': text, 'target': target_language}
+        response = requests.post(url, data=data).json()
+        translated_text = response['data']['translations'][0]['translatedText']
+        update.message.reply_text(translated_text)
+    except Exception as e:
+        update.message.reply_text(f'Error: {str(e)}')
+
+# Define the joke command handler
+def joke(update: Update, context: CallbackContext) -> None:
+    update.message.reply_text('Fetching a random joke...')
+
+# Define the message handler for getting a joke
+def handle_joke(update: Update, context: CallbackContext) -> None:
+    url = 'https://official-joke-api.appspot.com/random_joke'
+    response = requests.get(url).json()
+    joke = f"{response['setup']} - {response['punchline']}"
+    update.message.reply_text(joke)
+
 # Define the tag command handler
 def tag(update: Update, context: CallbackContext) -> None:
     chat_id = update.message.chat_id
@@ -273,6 +346,14 @@ def button(update: Update, context: CallbackContext) -> None:
         mute(query, context)
     elif query.data == 'antilink':
         antilink(query, context)
+    elif query.data == 'weather':
+        weather(query, context)
+    elif query.data == 'news':
+        news(query, context)
+    elif query.data == 'translate':
+        translate(query, context)
+    elif query.data == 'joke':
+        joke(query, context)
 
 # Define the referral endpoint
 @app.route('/referral/<int:inviter_id>/<int:new_user_id>', methods=['GET'])
@@ -314,6 +395,10 @@ dispatcher.add_handler(CommandHandler("ask_gpt", ask))
 dispatcher.add_handler(CommandHandler("upscale_image", upscale_image))
 dispatcher.add_handler(CommandHandler("compress_video", compress_video))
 dispatcher.add_handler(CommandHandler("play_music", play_music))
+dispatcher.add_handler(CommandHandler("weather", weather))
+dispatcher.add_handler(CommandHandler("news", news))
+dispatcher.add_handler(CommandHandler("translate", translate))
+dispatcher.add_handler(CommandHandler("joke", joke))
 dispatcher.add_handler(CommandHandler("tag", tag))
 dispatcher.add_handler(CommandHandler("mute", mute))
 dispatcher.add_handler(CommandHandler("antilink", antilink))
@@ -324,6 +409,10 @@ dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_as
 dispatcher.add_handler(MessageHandler(Filters.photo & ~Filters.command, handle_upscale_image))
 dispatcher.add_handler(MessageHandler(Filters.video & ~Filters.command, handle_compress_video))
 dispatcher.add_handler(MessageHandler(Filters.audio & ~Filters.command, handle_play_music))
+dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_weather))
+dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_news))
+dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_translate))
+dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_joke))
 
 @app.route('/')
 def index() -> str:
