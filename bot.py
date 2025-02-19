@@ -1,14 +1,14 @@
 import os
 import random
-import time
 from flask import Flask, request
 from telegram import Update, Bot, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Dispatcher, CommandHandler, CallbackContext, CallbackQueryHandler, MessageHandler, Filters
 from flask_sqlalchemy import SQLAlchemy
 from pytube import YouTube
 import openai
-from PIL import Image
+from PIL import Image, ImageEnhance
 from moviepy.editor import VideoFileClip
+from pydub import AudioSegment
 
 # Initialize Flask app and SQLAlchemy
 app = Flask(__name__)
@@ -62,7 +62,8 @@ def show_main_menu(update: Update, context: CallbackContext) -> None:
         [InlineKeyboardButton("Download YouTube Video", callback_data='download_video')],
         [InlineKeyboardButton("Upscale Image", callback_data='upscale_image')],
         [InlineKeyboardButton("Compress Video", callback_data='compress_video')],
-        [InlineKeyboardButton("Ask GPT", callback_data='ask_gpt')]
+        [InlineKeyboardButton("Ask GPT", callback_data='ask_gpt')],
+        [InlineKeyboardButton("Convert Music", callback_data='convert_music')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.message.reply_text('Main Menu:', reply_markup=reply_markup)
@@ -75,7 +76,8 @@ def show_main_menu(update: Update, context: CallbackContext) -> None:
         [KeyboardButton("/download_video")],
         [KeyboardButton("/upscale_image")],
         [KeyboardButton("/compress_video")],
-        [KeyboardButton("/ask_gpt")]
+        [KeyboardButton("/ask_gpt")],
+        [KeyboardButton("/convert_music")]
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard_buttons, one_time_keyboard=True)
     update.message.reply_text('Use the commands below:', reply_markup=reply_markup)
@@ -91,7 +93,8 @@ def help_command(update: Update, context: CallbackContext) -> None:
         '/menu - Show the main menu\n'
         '/withdraw - Withdraw funds\n'
         '/download - Download YouTube video\n'
-        '/ask_gpt - Ask GPT-4 a question'
+        '/ask_gpt - Ask GPT-4 a question\n'
+        '/convert_music - Convert music file'
     )
 
 # Define the about command handler
@@ -188,20 +191,22 @@ def handle_ask(update: Update, context: CallbackContext) -> None:
 
 # Define the upscale image command handler
 def upscale_image(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text('Please send the image you want to upscale.')
+    update.message.reply_text('Processing your image, please wait...')
 
 # Define the message handler for upscaling images
 def handle_upscale_image(update: Update, context: CallbackContext) -> None:
     photo = update.message.photo[-1].get_file()
     photo.download('image.jpg')
     img = Image.open('image.jpg')
-    img = img.resize((img.width * 2, img.height * 2), Image.ANTIALIAS)
+    img = img.resize((img.width * 2, img.height * 2), Image.LANCZOS)
+    enhancer = ImageEnhance.Sharpness(img)
+    img = enhancer.enhance(2.0)
     img.save('upscaled_image.jpg')
     update.message.reply_photo(photo=open('upscaled_image.jpg', 'rb'))
 
 # Define the compress video command handler
 def compress_video(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text('Please send the video you want to compress.')
+    update.message.reply_text('Processing your video, please wait...')
 
 # Define the message handler for compressing videos
 def handle_compress_video(update: Update, context: CallbackContext) -> None:
@@ -209,8 +214,20 @@ def handle_compress_video(update: Update, context: CallbackContext) -> None:
     video.download('video.mp4')
     clip = VideoFileClip('video.mp4')
     clip_resized = clip.resize(height=360)
-    clip_resized.write_videofile('compressed_video.mp4', codec='libx264')
+    clip_resized.write_videofile('compressed_video.mp4', codec='libx264', audio_codec='aac')
     update.message.reply_video(video=open('compressed_video.mp4', 'rb'))
+
+# Define the convert music command handler
+def convert_music(update: Update, context: CallbackContext) -> None:
+    update.message.reply_text('Please send the music file you want to convert.')
+
+# Define the message handler for converting music files
+def handle_convert_music(update: Update, context: CallbackContext) -> None:
+    audio = update.message.audio.get_file()
+    audio.download('music.mp3')
+    sound = AudioSegment.from_mp3('music.mp3')
+    sound.export('music.wav', format='wav')
+    update.message.reply_audio(audio=open('music.wav', 'rb'))
 
 # Define the tag command handler
 def tag(update: Update, context: CallbackContext) -> None:
@@ -240,6 +257,8 @@ def button(update: Update, context: CallbackContext) -> None:
         compress_video(query, context)
     elif query.data == 'ask_gpt':
         ask(query, context)
+    elif query.data == 'convert_music':
+        convert_music(query, context)
 
 # Define the referral endpoint
 @app.route('/referral/<int:inviter_id>/<int:new_user_id>', methods=['GET'])
@@ -280,6 +299,7 @@ dispatcher.add_handler(CommandHandler("download", download_video))
 dispatcher.add_handler(CommandHandler("ask", ask))
 dispatcher.add_handler(CommandHandler("upscale_image", upscale_image))
 dispatcher.add_handler(CommandHandler("compress_video", compress_video))
+dispatcher.add_handler(CommandHandler("convert_music", convert_music))
 dispatcher.add_handler(CommandHandler("tag", tag))
 dispatcher.add_handler(CallbackQueryHandler(button))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_captcha))
@@ -288,6 +308,7 @@ dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_do
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_ask))
 dispatcher.add_handler(MessageHandler(Filters.photo & ~Filters.command, handle_upscale_image))
 dispatcher.add_handler(MessageHandler(Filters.video & ~Filters.command, handle_compress_video))
+dispatcher.add_handler(MessageHandler(Filters.audio & ~Filters.command, handle_convert_music))
 
 @app.route('/')
 def index() -> str:
