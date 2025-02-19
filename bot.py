@@ -61,7 +61,8 @@ def show_main_menu(update: Update, context: CallbackContext) -> None:
         [InlineKeyboardButton("Withdraw", callback_data='withdraw')],
         [InlineKeyboardButton("Download YouTube Video", callback_data='download_video')],
         [InlineKeyboardButton("Upscale Image", callback_data='upscale_image')],
-        [InlineKeyboardButton("Compress Video", callback_data='compress_video')]
+        [InlineKeyboardButton("Compress Video", callback_data='compress_video')],
+        [InlineKeyboardButton("Ask GPT", callback_data='ask_gpt')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.message.reply_text('Main Menu:', reply_markup=reply_markup)
@@ -73,7 +74,8 @@ def show_main_menu(update: Update, context: CallbackContext) -> None:
         [KeyboardButton("/withdraw")],
         [KeyboardButton("/download_video")],
         [KeyboardButton("/upscale_image")],
-        [KeyboardButton("/compress_video")]
+        [KeyboardButton("/compress_video")],
+        [KeyboardButton("/ask_gpt")]
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard_buttons, one_time_keyboard=True)
     update.message.reply_text('Use the commands below:', reply_markup=reply_markup)
@@ -88,7 +90,8 @@ def help_command(update: Update, context: CallbackContext) -> None:
         '/contact - Contact information\n'
         '/menu - Show the main menu\n'
         '/withdraw - Withdraw funds\n'
-        '/download - Download YouTube video'
+        '/download - Download YouTube video\n'
+        '/ask_gpt - Ask GPT-4 a question'
     )
 
 # Define the about command handler
@@ -235,6 +238,8 @@ def button(update: Update, context: CallbackContext) -> None:
         upscale_image(query, context)
     elif query.data == 'compress_video':
         compress_video(query, context)
+    elif query.data == 'ask_gpt':
+        ask(query, context)
 
 # Define the referral endpoint
 @app.route('/referral/<int:inviter_id>/<int:new_user_id>', methods=['GET'])
